@@ -1,6 +1,6 @@
 .PHONY: run
 run:
-	python main.py
+	python bot\bot.py
 
 .PHONY: check
 check:

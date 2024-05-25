@@ -1,2 +1,4 @@
 python-dotenv
 aiogram
+# pydantic
+# pydantic_settings
