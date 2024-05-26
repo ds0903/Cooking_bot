@@ -1,10 +1,23 @@
 import asyncio
 # from aiogram import F
-from aiogram import Router, types
-from aiogram.types import Message
-from aiogram.filters.command import Command
-from aiogram.utils.formatting import Text, Bold
 
-router = Router()
+import sqlite3
 
-#### Тут буде описана підкапотна логіка всіх функцій бота ###
+
+### Тут буде описана  логіка бази данних бота ###
+
+# Операції з бд
+
+
+async def search_recipe(recipe_name):
+    """Запрос к базе по поиску рецептов"""
+    conn = sqlite3.connect('bot_main.db')
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM recipes WHERE name = ?", (recipe_name,))
+    recipe = cursor.fetchone()
+
+    cursor.close()
+    conn.close()
+
+    return recipe
