@@ -1,32 +1,44 @@
 import asyncio
-from aiogram import F
-# from datetime import datetime
+# from aiogram import F
 from aiogram import Router, types
-from aiogram.types import Message, CallbackQuery
 from aiogram.filters.command import Command
-from aiogram.utils.formatting import Text, Bold
-from handlers.logic import sqlite3
-from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from handlers.logic import search_recipe, search_recipe_by_clas, insert_data
+from aiogram.types import FSInputFile, KeyboardButton, ReplyKeyboardMarkup
 router = Router()
 
 ### Тут знаходяться команди бота ###
 
 
-"""Тут описані всі команди"""
+class Form(StatesGroup):
+    food_class = State()
+    poshuk_ingredient = State()
+    my_receps = State()
+
+"""Логіка головного меню"""
+@router.message(Command("start"))
+async def cmd_start(message: types.Message):
+    text = (
+        "Привіт я був створений аби допомогти тобі кулінарними порадами"
+        )
+    await message.answer(text)
+    await asyncio.sleep(1)
+    await cmd_menu(message)
 
 @router.message(lambda message: message.text == 'Меню')
-async def cmd_start(message: types.Message):
+async def cmd_menu(message: types.Message):
     text1 = (
-        "Виберіть потрібну вам кнопку"
+        "Виберіть потрібну вам дію"
         )
-    
+
     # Создание кнопок для обычной клавиатуры
     kb = [
         [KeyboardButton(text="Довідник"), KeyboardButton(text="Пошук рецептів")],
         [KeyboardButton(text="Пошук рецептів за інгрідієнтами"), KeyboardButton(text="Мої рецепти")],
     ]
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-    
+
     await asyncio.sleep(1)
     await message.answer(text1, reply_markup=keyboard)
 
@@ -43,126 +55,148 @@ async def process_with_puree(message: types.Message):
     await asyncio.sleep(2)
     await message.answer(text2, reply_markup=keyboard)
 
-
-async def search_recipe(recipe_name):
-    """Запрос к базе по поиску рецептов"""
-    conn = sqlite3.connect('bot_main.db')
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM recipes WHERE name = ?", (recipe_name,))
-    recipe = cursor.fetchone()
-
-    cursor.close()
-    conn.close()
-
-    return recipe
-
-
-"""Логіка головного меню"""
-@router.message(Command("start"))
-async def cmd_start(message: types.Message):
-    text = (
-        "Привіт я був створений аби допомогти тобі кулінарними порадами"
-        )
-    text1 = (
-        "Для проводовження перейди в меню"
-        )
-
-    kb = [
-        [KeyboardButton(text="Меню")],
-    ]
-    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-
-    await message.answer(text)
-    await asyncio.sleep(1)
-    await message.answer(text1, reply_markup=keyboard)
-
-
 @router.message(lambda message: message.text == 'Пошук рецептів')
-async def cmd_poshuk(message: types.Message):
+async def cmd_poshuk(message: types.Message, state: FSMContext):
     """Організація пошуку рецептів"""
 
     kb = [
+        [KeyboardButton(text="Супи")],[KeyboardButton(text="Напоі")],[KeyboardButton(text="Гриль")],
         [KeyboardButton(text="Меню")],
     ]
     keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-    # await asyncio.sleep(1)
-    await message.reply("Напишіть клас страви:\nНаприклад 'Салат' або 'коктелі'", reply_markup=types.ReplyKeyboardRemove())
-    # await message.answer("Напишіть клас страви:\nНаприклад 'Салат' або 'коктелі'")
-    await asyncio.sleep(2)
-    await message.answer("Для повернення в головне меню натисніть кнопку 'Меню'", reply_markup=keyboard)
 
-    @router.message()
-    async def process_recipe_name(message: types.Message):
-        """Обработка введенного пользователем имени рецепта"""
+    await message.answer("Виберіть бажаний клас страв і бот поверне вам готові рецепти", reply_markup=keyboard)
+    await state.set_state(Form.food_class)
 
-        recipe_name = message.text
-        recipe = await search_recipe(recipe_name)
+    @router.message(lambda message: message.text == 'Супи', Form.food_class)
+    async def cmd_sypi(message: types.Message):
+        file_ids = []
+        data = message.text
+        response = await search_recipe_by_clas(data)
+        for i in response:
+            id, clas, name, recipes, about = i
+            result = f"ID: {id}\nClass: {clas}\nName: {name}\nRecipes: {recipes}\nDescription: {about}"
+            await asyncio.sleep(1)
+            await message.reply(result, reply_markup=types.ReplyKeyboardRemove())
 
-        if recipe:
-            await message.answer(f"Рецептів за назвою '{recipe_name}': знайдені.")
-        else:
-            await message.answer(f"Рецептів за назвою '{recipe_name}' не знайдені.")
+            """Поки тестовий варіант відправки фоток"""
+            # if id == 1:
+            #     image_from_pc = FSInputFile("bot\handlers\photos\photo_2024-05-24_15-54-47.jpg")
+            #     result = await message.answer_photo(
+            #         image_from_pc, caption="фотка 1"
+            #     )
+            #     file_ids.append(result.photo[-1].file_id)
+            # if id == 2:
+            #     image_from_pc = FSInputFile("bot\handlers\photos\photo_2024-05-24_15-54-47.jpg")
+            #     result = await message.answer_photo(
+            #         image_from_pc, caption="фотка 2"
+            #     )
+            #     file_ids.append(result.photo[-1].file_id)
+        await state.clear()
+        asyncio.sleep(6)
+        await cmd_menu(message)
+
+    @router.message(lambda message: message.text == 'Гриль', Form.food_class)
+    async def cmd_grill(message: types.Message):
+        data = message.text
+        response = await search_recipe_by_clas(data)
+        for i in response:
+            id, clas, name, recipes, about = i
+            result = f"ID: {id}\nClass: {clas}\nName: {name}\nRecipes: {recipes}\nDescription: {about}"
+            await asyncio.sleep(1)
+            await message.reply(result, reply_markup=types.ReplyKeyboardRemove())
+        await state.clear()
+        asyncio.sleep(6)
+        await cmd_menu(message)
+
+
+    @router.message(lambda message: message.text == 'Напоі', Form.food_class)
+    async def cmd_napoi(message: types.Message):
+        data = message.text
+        response = await search_recipe_by_clas(data)
+        for i in response:
+            id, clas, name, recipes, about = i
+            result = f"ID: {id}\nClass: {clas}\nName: {name}\nRecipes: {recipes}\nDescription: {about}"
+            await asyncio.sleep(1)
+            await message.reply(result, reply_markup=types.ReplyKeyboardRemove())
+        await state.clear()
+        asyncio.sleep(6)
+        await cmd_menu(message)
 
 
 @router.message(lambda message: message.text == 'Пошук рецептів за інгрідієнтами')
-async def cmd_poshuk_ingreee(message: types.Message):
-    """Організація пошуку рецептів за інгрідієнтами"""
+async def cmd_poshuk_ingredient(message: types.Message, state: FSMContext):
 
-    kb = [
-        [KeyboardButton(text="Меню")],
-    ]
-    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     await message.reply("Напишіть інгрідієнти для страви:\nНаприклад 'морква' або 'яловиЧИНА'", reply_markup=types.ReplyKeyboardRemove())
-    await asyncio.sleep(2)
-    await message.answer("Для повернення в головне меню натисніть кнопку 'Меню'", reply_markup=keyboard)
 
-    @router.message()
+    await state.set_state(Form.poshuk_ingredient)
+
+    @router.message(Form.poshuk_ingredient)
     async def process_recipe_name(message: types.Message):
-        """Обработка введенного пользователем имени рецепта"""
 
-        recipe_name = message.text
-        recipe = await search_recipe(recipe_name)
+        recipe = message.text.split()
+        recipe1 = await search_recipe(recipe)
 
-        if recipe:
-            await message.answer(f"Рецептів за інгрідієнтами '{recipe_name}': знайдені.")
+        if recipe1:
+            await message.answer(f"Рецептів за інгрідієнтами '{recipe}': знайдені.")
+            await state.clear()
+            await asyncio.sleep(1)
+            await cmd_menu(message)
         else:
-            await message.answer(f"Рецептів за інгрідієнтами '{recipe_name}' не знайдено.")
-
+            await message.answer(f"Рецептів за інгрідієнтами '{recipe}' не знайдено.")
+            await state.clear()
+            await asyncio.sleep(1)
+            await cmd_menu(message)
 
 @router.message(lambda message: message.text == 'Мої рецепти')
 async def cmd_my_recipes(message: types.Message):
-    """Організація пошуку рецептів за інгрідієнтами"""
 
-    kb_menu = [
-        [KeyboardButton(text="Меню")],
+
+    kb = [
+        [KeyboardButton(text="Видалити"), KeyboardButton(text="Відредагувати")],
+        [KeyboardButton(text="Додати"), KeyboardButton(text="Меню")],
     ]
+    text = "Тут ви можете керувати своїми рецептами"
+    keyboard = ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    await message.answer(text, reply_markup=keyboard)
 
-    # kb = [
-    #     [KeyboardButton(text="Видалити"), KeyboardButton(text="Відредагувати")],
-    #     [KeyboardButton(text="Додати"), KeyboardButton(text="Мої рецепти")],
-    # ]
-    keyboard = ReplyKeyboardMarkup(keyboard=kb_menu, resize_keyboard=True)
-    await message.reply("Напишіть інгрідієнти для страви:\nНаприклад 'морква' або 'яловиЧИНА'", reply_markup=types.ReplyKeyboardRemove())
-    await asyncio.sleep(2)
-    await message.answer("Для повернення в головне меню натисніть кнопку 'Меню'", reply_markup=keyboard)
+    @router.message(lambda message: message.text == 'Додати')
+    async def cmd_dodat(message: types.Message, state: FSMContext):
+        text = "Для додавання рецепту напишіть будьласка його клаc, назву рецепту, інгрідієнти, інформацію\n\nОбовьязково в тому порядку в якому наведено в прикладі!\n\n"
+        text1 = "Наприклад: клас: 'Салати', назва: 'сільський', інгрідієнти: 'морква яловиЧИНА', опис: 'Опис рецепту'"
+        await message.reply(f"{text}{text1}", reply_markup=types.ReplyKeyboardRemove())
+        await state.set_state(Form.my_receps)
 
-    @router.message()
-    async def process_recipe_name(message: types.Message):
-        """Обработка введенного пользователем имени рецепта"""
+        @router.message(Form.my_receps)
+        async def process_register(message: types.Message):
 
-        recipe_name = message.text
-        recipe = await search_recipe(recipe_name)
+            data = message.text.split()
+            response = await insert_data(data)
+            await message.reply(response)
+            await state.clear()
+            await asyncio.sleep(2)
+            await cmd_menu(message)
 
-        if recipe:
-            await message.answer(f"Рецептів за інгрідієнтами '{recipe_name}': знайдені.")
-        else:
-            await message.answer(f"Рецептів за інгрідієнтами '{recipe_name}' не знайдено.")
+
+
 
 
 ### Ідеї на майбутнє
 
 # await message.reply("Отличный выбор!", reply_markup=types.ReplyKeyboardRemove())
+
+# response1 = response[0]
+#         id, clas, name, recipes, about = response1
+
+#         result1 = f"ID: {id}\nClass: {clas}\nName: {name}\nRecipes: {recipes}\nDescription: {about}"
+#         await message.reply(f"результат 1{result1}", reply_markup=types.ReplyKeyboardRemove())
+
+#         await state.clear()
+
+#         response2 = response[1]
+#         id, clas, name, recipes, about = response2
+#         result2 = f"ID: {id}\nClass: {clas}\nName: {name}\nRecipes: {recipes}\nDescription: {about}"
+#         await message.answer(f"результат 2{result2}")
 
 # @router.message(Command("poshuk"))
 # async def cmd_poshuk(message: types.Message):

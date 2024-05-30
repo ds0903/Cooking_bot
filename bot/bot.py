@@ -11,16 +11,12 @@ import os
 logging.basicConfig(level=logging.INFO)
 # Объект бота
 bot = Bot(token=os.getenv("BOT_TOKEN"))
-# Диспетчер
 dp = Dispatcher()
 # Змінна що відповідає за таймер потім розповім
 dp["started_at"] = datetime.now().strftime("%Y-%m-%d %H:%M")
 
 # Включаємо роутер
 dp.include_router(comands.router)
-
-
-
 
 
 
