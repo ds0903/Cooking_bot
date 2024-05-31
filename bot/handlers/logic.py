@@ -7,20 +7,22 @@ import sqlite3
 # Операції з бд
 
 
-async def search_recipe(recipe_name):
+async def search_recipe(recipe):
     conn = sqlite3.connect('bot_main.db')
     cursor = conn.cursor()
-    test1, test2 = recipe_name
-    test = f"{test1} {test2}"
-    for recipe in recipe_name:
+    for i in recipe:
+        recipe_main = str(i)
+    test = f"%{recipe_main}%"
+    cursor.execute("SELECT * FROM food_main WHERE description LIKE ?", (test,))
+    result = cursor.fetchall()
 
-        cursor.execute("SELECT * FROM food_main WHERE recipes = ?", (test,))
-        result = cursor.fetchall()
-
-        cursor.close()
-        conn.close()
-
+    cursor.close()
+    conn.close()
+    if result:
         return result
+    else:
+        return "Помилка запиту"
+
 
 
 async def search_recipe_by_clas(clas):
@@ -42,10 +44,10 @@ async def insert_data(data):
     conn = sqlite3.connect("bot_main.db")
     cursor = conn.cursor()
 
-    clas, name, recipes, description = data
+    clas, description = data
 
     cursor.execute(
-        "INSERT OR IGNORE INTO food_my (clas, name, recipes, description) VALUES (?, ?, ?, ?)", (clas, name, recipes, description)
+        "INSERT OR IGNORE INTO food_main (clas, description) VALUES (?, ?)", (clas, description)
     )
     # data = cursor.fetchone()
 
@@ -58,3 +60,36 @@ async def insert_data(data):
     conn.close()
 
     return data
+
+
+async def delete_data(id):
+    conn = sqlite3.connect("bot_main.db")
+    cursor = conn.cursor()
+
+
+    cursor.execute(
+        "DELETE FROM food_main WHERE id = ?", (id,)
+    )
+
+    if cursor.rowcount == 1:
+        data = f"Рецепт №: {id} успішно видаленно"
+    else:
+        data = f"Рецепт №: {id} не існує"
+
+    conn.commit()
+    conn.close()
+
+    return data
+
+
+def get_all():
+    conn = sqlite3.connect('bot_main.db')
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM food_main")
+    results = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    return results
