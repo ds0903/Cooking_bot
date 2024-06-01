@@ -1,6 +1,4 @@
-
 import sqlite3
-
 
 ### Тут буде описана  логіка бази данних бота ###
 
@@ -22,7 +20,6 @@ async def search_recipe(recipe):
         return result
     else:
         return "Помилка запиту"
-
 
 
 async def search_recipe_by_clas(clas):
@@ -61,7 +58,7 @@ async def insert_data(data):
 
     return data
 
-
+# https://www.24xxx.me/video/ploskogrydaya-armyanka-zhestko-53152.html
 async def delete_data(id):
     conn = sqlite3.connect("bot_main.db")
     cursor = conn.cursor()
