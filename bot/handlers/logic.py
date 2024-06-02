@@ -6,7 +6,7 @@ import sqlite3
 
 
 async def search_recipe(recipe):
-    conn = sqlite3.connect('bot_main.db')
+    conn = sqlite3.connect("bot_main.db")
     cursor = conn.cursor()
     for i in recipe:
         recipe_main = str(i)
@@ -23,7 +23,7 @@ async def search_recipe(recipe):
 
 
 async def search_recipe_by_clas(clas):
-    conn = sqlite3.connect('bot_main.db')
+    conn = sqlite3.connect("bot_main.db")
     cursor = conn.cursor()
 
     cursor.execute("SELECT * FROM food_main WHERE clas = ?", (clas,))
@@ -34,7 +34,7 @@ async def search_recipe_by_clas(clas):
     if results:
         return results
     else:
-        return None,None,None,None,None
+        return None, None, None, None, None
 
 
 async def insert_data(data):
@@ -44,7 +44,8 @@ async def insert_data(data):
     clas, description = data
 
     cursor.execute(
-        "INSERT OR IGNORE INTO food_main (clas, description) VALUES (?, ?)", (clas, description)
+        "INSERT OR IGNORE INTO food_main (clas, description) VALUES (?, ?)",
+        (clas, description),
     )
     # data = cursor.fetchone()
 
@@ -58,15 +59,12 @@ async def insert_data(data):
 
     return data
 
-# https://www.24xxx.me/video/ploskogrydaya-armyanka-zhestko-53152.html
+
 async def delete_data(id):
     conn = sqlite3.connect("bot_main.db")
     cursor = conn.cursor()
 
-
-    cursor.execute(
-        "DELETE FROM food_main WHERE id = ?", (id,)
-    )
+    cursor.execute("DELETE FROM food_main WHERE id = ?", (id,))
 
     if cursor.rowcount == 1:
         data = f"Рецепт №: {id} успішно видаленно"
@@ -80,7 +78,7 @@ async def delete_data(id):
 
 
 def get_all():
-    conn = sqlite3.connect('bot_main.db')
+    conn = sqlite3.connect("bot_main.db")
     cursor = conn.cursor()
 
     cursor.execute("SELECT * FROM food_main")
